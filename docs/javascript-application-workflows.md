@@ -275,6 +275,55 @@ semantics matter, run behavioral probes directly against the relevant
 application versions and capture them through the available browser, Electron,
 or process workflows.
 
+## Electron IPC and contextBridge inventory
+
+Static reconstruction keeps the Electron boundary as graph entities rather than
+an API report: `context-bridge-api` for each `exposeInMainWorld` or
+`exposeInIsolatedWorld` key, `ipc-channel` for each channel use, and
+`ipc-handler` for each registered `ipcMain` handler or inbound listener. The
+`exposes`, `invokes`, `sends`, and `handles` relations connect them.
+
+Authority is mixed, so read `evidence.authority`, `evidence.state`, and
+`evidence.confidence` on each node instead of assuming one class. A bridge key
+exposed through an object literal, and a channel named by a literal `invoke`,
+`send`, or `on` call, are `ast-static-analysis` with `observed` state and
+`exact` confidence. A channel node that exists only to complete an inferred
+relationship is `static-relationship-inference` with `inferred` state and
+`high` confidence, so one channel can appear as both an observed use and an
+inferred counterpart. Every `exposes`, `invokes`, `sends`, and `handles`
+relation is inferred: inert syntax does not prove the pairing ran.
+
+A literal channel that matches exactly one main-process handler carries
+`pairing_basis: unique-exact-literal-channel`, which is a uniqueness claim about
+the analyzed syntax, not proof that the renderer reached the handler or that the
+preload executed.
+
+`inspect_analysis_view` projects only a summary, a module item, or a module
+page from application Evidence, so read these nodes from the analyzed graph
+itself. The summary already counts them in `summary.context_bridge_apis`,
+`summary.exposed_api_members`, and `summary.ipc` (`literal_channels`,
+`dynamic_channel_operations`, `main_handlers`,
+`paired_renderer_transmissions`, `ambiguous_renderer_transmissions`,
+`unpaired_literal_renderer_transmissions`).
+
+```bash
+rea analyze-javascript-application /absolute/path/to/app --json > app-evidence.json
+jq -r '.normalized_result.graph.nodes[]
+  | select(.kind|IN("context-bridge-api","ipc-channel","ipc-handler"))
+  | [.kind,
+     (.observations[0].properties.api_key // .observations[0].properties.channel // "-"),
+     ((.observations[0].properties.members // []) | join(",")),
+     .observations[0].evidence.state, .observations[0].evidence.confidence,
+     (.observations[0].evidence.location.value.source // "-")] | @tsv' app-evidence.json
+```
+
+A dynamic channel keeps `properties.channel: null` with the recovered
+`channel_expression` and `resolution: "dynamic"`. It receives no pairing edge,
+and that absence is not evidence that no handler exists. Report a missing
+pairing edge as unpaired only for literal channels, and keep it unproven rather
+than absent. Bridge keys, member lists, and channel names are caller-selected
+observations; REA does not synthesize plausible names.
+
 ## CLI and verification
 
 All six CLI commands accept inline JSON or a path to a JSON file. The CLI

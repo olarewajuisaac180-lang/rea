@@ -5,7 +5,10 @@ REA can attach to an Electron/Chromium CDP endpoint and inspect existing `file:/
 This passive runtime surface is distinct from the target-free static
 [`analyze_javascript_application`](javascript-artifact-reconstruction.md)
 workflow. Static analysis reads a local ASAR or extracted directory without
-executing application code. Passive observation inspects an existing Electron
+executing application code. Statically recovered bridge keys, IPC channels, and
+handlers are inventoried through the graph nodes described in
+[Electron IPC and contextBridge inventory](javascript-application-workflows.md#electron-ipc-and-contextbridge-inventory).
+Passive observation inspects an existing Electron
 page. The results keep static inferences and runtime observations distinct.
 Packaged fuse state is a separate static read:
 [`inspect_electron_fuses`](electron-fuses.md) reports whether this binary will
